@@ -1,100 +1,107 @@
-import { Hand } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { LayoutDashboard, LibraryBig, Palette, Settings } from "lucide-react";
+import type { TermixApp } from "@termix-ssh/plugin-sdk/frontend";
+import { TerminalLayout } from "./layout/TerminalLayout";
+import { AppearanceStep } from "./onboarding/AppearanceStep";
+import { DashboardTabType, ManageTabType, SettingsTabType } from "./tabs";
+import { setReportOpener } from "./report-bug";
 import {
-  useTranslation,
-  type TabProps,
-  type TermixApp,
-} from "@termix-ssh/plugin-sdk/frontend";
-
-const TAB_ID = "hello-world";
-
-interface Note {
-  id: number;
-  text: string;
-  createdAt: string;
-}
-
-function createTab(app: TermixApp) {
-  return function HelloWorldTab({ isVisible }: TabProps) {
-    const { t } = useTranslation();
-    const [greeting, setGreeting] = useState("");
-    const [notes, setNotes] = useState<Note[]>([]);
-    const [draft, setDraft] = useState("");
-    const [failed, setFailed] = useState(false);
-
-    const load = async () => {
-      try {
-        const { data } = await app.api.get<{ greeting: string; notes: Note[] }>(
-          "/notes",
-        );
-        setGreeting(data.greeting);
-        setNotes(data.notes);
-        setFailed(false);
-      } catch {
-        setFailed(true);
-      }
-    };
-
-    useEffect(() => {
-      if (isVisible) void load();
-    }, [isVisible]);
-
-    const add = async (event: FormEvent) => {
-      event.preventDefault();
-      if (!draft.trim()) return;
-      try {
-        await app.api.post("/notes", { text: draft });
-        setDraft("");
-      } catch {
-        setFailed(true);
-        return;
-      }
-      await load();
-    };
-
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <h2 className="text-lg font-semibold">{greeting}</h2>
-        <form onSubmit={add} className="flex gap-2">
-          <input
-            className="flex-1 border border-border bg-transparent px-2 py-1"
-            value={draft}
-            placeholder={t("tab.placeholder")}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <button type="submit" className="border border-border px-3 py-1">
-            {t("tab.add")}
-          </button>
-        </form>
-        {failed && <p className="text-sm text-destructive">{t("tab.error")}</p>}
-        {notes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("tab.empty")}</p>
-        ) : (
-          <ul className="flex flex-col gap-1">
-            {notes.map((note) => (
-              <li key={note.id} className="border-b border-border py-1">
-                {note.text}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    );
-  };
-}
+  defaultPrefixCombo,
+  installPrefixKeys,
+  prefix,
+  PREFIX_ACTION,
+} from "./shell/prefix-keys";
+import { loadPrefixOverride, prefixOverridden } from "./shell/prefix-binding";
 
 export function activate(app: TermixApp): void {
-  app.registerRailItem({
-    id: TAB_ID,
-    icon: Hand,
-    titleKey: "tab.title",
-    kind: "tab",
-    permission: "use",
+  setReportOpener(app);
+  // Plugin buttons fill the status bar's height.
+  app.declareActionSlot({
+    id: "tabbar.actions",
+    accepts: ["component"],
+    fit: "bar" as "inline",
   });
-  app.registerTab(TAB_ID, createTab(app), {
-    icon: Hand,
-    titleKey: "tab.title",
+  // Plain values per host row; components only from plugins not moved yet.
+  app.declareActionSlot({
+    id: "dashboard.hostRow",
+    accepts: ["data", "component"],
+    shapes: ["bars", "stat", "text"],
+    rows: "host",
+    fit: "inline",
+  });
+  // A view next to the dashboard (the homepage) takes the whole page.
+  app.declareActionSlot({
+    id: "dashboard.secondaryView",
+    accepts: ["component"],
+    fit: "fill",
+  });
+  app.declareActionSlot({
+    id: "credentials.badges",
+    accepts: ["data"],
+    shapes: ["badge", "text"],
+    rows: "credential",
+  });
+  app.declareActionSlot({
+    id: "dashboard.hostRowBadge",
+    accepts: ["data", "component"],
+    shapes: ["badge"],
+    rows: "host",
+    fit: "inline",
+  });
+  app.registerLayout({
+    id: "terminal",
+    label: "layout.name",
+    component: TerminalLayout,
+  });
+
+  app.registerTab("dashboard", DashboardTabType, {
+    icon: LayoutDashboard,
+    titleKey: "tab.dashboard",
     singleton: true,
     hostless: true,
+  });
+  app.registerTab("host-manager", ManageTabType, {
+    icon: LibraryBig,
+    titleKey: "tab.manage",
+    singleton: true,
+  });
+  app.registerTab("settings", SettingsTabType, {
+    icon: Settings,
+    titleKey: "tab.settings",
+    singleton: true,
+  });
+
+  // The prefix runs anywhere, and a terminal hands it on when it is bound.
+  app.registerKeybindingAction({
+    id: PREFIX_ACTION,
+    titleKey: "terminalLayout.prefixAction",
+    scope: "global",
+    run: () => {
+      prefix.arm();
+    },
+  });
+  app.registerKeybindingDefault({
+    id: PREFIX_ACTION,
+    combo: defaultPrefixCombo(),
+    descriptionKey: "terminalLayout.prefixAction",
+  });
+  const reload = () => void loadPrefixOverride().catch(() => undefined);
+  reload();
+  window.addEventListener("customKeybindingsChanged", reload);
+  const removeKeys = installPrefixKeys(prefixOverridden);
+  app.onDispose(() => {
+    window.removeEventListener("customKeybindingsChanged", reload);
+    removeKeys();
+    prefix.setRunner(null);
+  });
+
+  // Position 40 is where core's own step sat, and it replaces that one, so
+  // people who already went through it are not asked again.
+  app.registerOnboardingStep({
+    id: "appearance",
+    titleKey: "onboarding.appearanceTitle",
+    icon: Palette,
+    component: AppearanceStep,
+    position: 40,
+    replaces: ["appearance"],
   });
 }
