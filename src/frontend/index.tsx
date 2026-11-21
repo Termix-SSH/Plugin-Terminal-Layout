@@ -94,14 +94,19 @@ export function activate(app: TermixApp): void {
     prefix.setRunner(null);
   });
 
-  // Position 40 is where core's own step sat, and it replaces that one, so
-  // people who already went through it are not asked again.
+  // Position 40 is where core's own step sat. It replaces that one and the
+  // other layouts' copies, so people who switch layouts are not asked again.
   app.registerOnboardingStep({
     id: "appearance",
     titleKey: "onboarding.appearanceTitle",
     icon: Palette,
     component: AppearanceStep,
     position: 40,
-    replaces: ["appearance"],
+    replaces: [
+      "appearance",
+      "classic-layout:appearance",
+      "host-layout:appearance",
+      "original-layout:appearance",
+    ],
   });
 }
