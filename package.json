@@ -14,8 +14,8 @@
     "generate:settings-index": "node scripts/generate-settings-search-index.cjs"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "3.14.26",
-    "lucide-react": "^1.74.0"
+    "@tanstack/react-virtual": "3.14.28",
+    "lucide-react": "^1.80.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
@@ -24,20 +24,20 @@
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.10",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.10",
     "@types/pngjs": "^6.0.5",
-    "@types/react": "^19.2.18",
+    "@types/react": "^19.3.2",
     "@types/react-dom": "^19.2.4",
     "express": "^5.2.1",
     "husky": "^9.1.7",
     "i18next": "^26.7.2",
     "jsdom": "^31.0.1",
-    "lint-staged": "^17.6.1",
+    "lint-staged": "^17.6.2",
     "prettier": "3.10.1",
     "react-i18next": "^17.1.13",
     "sonner": "^2.0.8",
     "typescript": "~7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.2"
   },
   "peerDependencies": {
     "@termix-ssh/plugin-sdk": "^2.10.1",
